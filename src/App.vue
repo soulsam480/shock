@@ -1,51 +1,19 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-
-
-class Device {
-	server: BluetoothRemoteGATTServer | null = null
-	services: BluetoothRemoteGATTService[] = []
-
-	constructor(readonly ble: BluetoothDevice) {
-		ble.addEventListener("gattserverdisconnected", () => {
-			console.log("gattserverdisconnected", this.ble.name)
-		})
-	}
-
-	get name() {
-		return this.ble.name
-	}
-
-	get connected() {
-		return this.ble.gatt?.connected || false
-	}
-
-	async connect() {
-		this.server = await this.ble.gatt?.connect() || null
-		this.services = await this.server?.getPrimaryServices() || []
-	}
-
-	disconnect() {
-		this.ble.gatt?.disconnect()
-	}
-}
-
-
-const device = ref<Device | null>(null)
+import { GShockConstants, IGShockManager } from './lib';
 
 async function onButtonClick() {
-
 	try {
-		const dev = await navigator.bluetooth.requestDevice({
-			filters: [{ namePrefix: "CASIO", services: ["00001804-0000-1000-8000-00805f9b34fb"] }],
-			optionalServices: ["26eb000d-b012-49a8-b1f8-394fb2032b0f"]
-		})
-
-		device.value = new Device(dev)
-
-		await device.value.connect()
+		const device = await navigator.bluetooth.requestDevice({
+			acceptAllDevices: false,
+			filters: [{ services: [GShockConstants.CASIO_SERVICE_UUID,] }],
+			optionalServices: [GShockConstants.ALL_FEATURES_SERVICE_UUID]
+		});
+		const manager = new IGShockManager();
+		await manager.connect(device);
+		const watchName = await manager.fetchWatchName();
+		console.log("Watch Name:", watchName);
 	} catch (error) {
-		console.log(error)
+		console.error("Error during execution:", error);
 	}
 }
 </script>
@@ -54,13 +22,13 @@ async function onButtonClick() {
 	<div>
 
 		<button @click="onButtonClick">
-			Ask
+			Connect
 		</button>
 
-		<div v-if="device?.ble">
-			<p>{{ device.name }}</p>
-			<p>{{ device.connected }}</p>
-		</div>
+		<!-- <div v-if="device?.ble"> -->
+		<!-- 	<p>{{ device.name }}</p> -->
+		<!-- 	<p>{{ device.connected }}</p> -->
+		<!-- </div> -->
 	</div>
 </template>
 
